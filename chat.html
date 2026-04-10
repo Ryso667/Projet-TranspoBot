@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TranspoBot — Assistant IA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== VARIABLES & RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0f14;
+      --bg2:         #13161e;
+      --bg3:         #1a1e2a;
+      --border:      #252a38;
+      --accent:      #3d8ef0;
+      --accent2:     #5ba3f5;
+      --accent-dim:  rgba(61,142,240,0.12);
+      --accent-glow: rgba(61,142,240,0.25);
+      --user-bg:     #1e3a5f;
+      --user-border: #2d5a9e;
+      --bot-bg:      #161b26;
+      --bot-border:  #252a38;
+      --text:        #e8eaf0;
+      --text-muted:  #7a8099;
+      --text-dim:    #4a5068;
+      --green:       #22c55e;
+      --orange:      #f59e0b;
+      --red:         #ef4444;
+      --sql-bg:      #0a0c10;
+      --sql-border:  #1f2535;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --shadow:      0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      grid-template-rows: 100vh;
+      height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 12px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 8px 12px 4px;
+      margin-top: 8px;
+    }
+
+    .example-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      line-height: 1.4;
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .example-btn::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .example-btn:hover {
+      background: var(--accent-dim);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .example-btn:hover::before { opacity: 1; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      flex-shrink: 0;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ===== MAIN CHAT AREA ===== */
+    .chat-area {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .topbar-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 15px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-icon:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ===== MESSAGES ZONE ===== */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ===== WELCOME STATE ===== */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      padding: 40px;
+      gap: 16px;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 0 32px var(--accent-glow);
+      margin-bottom: 8px;
+    }
+
+    .welcome h2 {
+      font-family: 'Space Mono', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .welcome p {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .welcome-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 7px 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    /* ===== MESSAGE BUBBLES ===== */
+    .message {
+      display: flex;
+      gap: 12px;
+      animation: fadeInUp 0.3s ease;
+      max-width: 820px;
+    }
+
+    .message.user {
+      flex-direction: row-reverse;
+      align-self: flex-end;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      width: 100%;
+      max-width: 820px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .message.user .avatar {
+      background: var(--user-bg);
+      border: 1px solid var(--user-border);
+    }
+
+    .message.bot .avatar {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .bubble {
+      padding: 13px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.65;
+      max-width: 600px;
+    }
+
+    .message.user .bubble {
+      background: var(--user-bg);
+      border: 1px solid var(--user-border);
+      border-bottom-right-radius: 4px;
+      color: #c8deff;
+    }
+
+    .message.bot .bubble {
+      background: var(--bot-bg);
+      border: 1px solid var(--bot-border);
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .bubble-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .bubble-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ===== SQL BLOCK ===== */
+    .sql-block {
+      margin-top: 12px;
+      border: 1px solid var(--sql-border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .sql-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--sql-bg);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+      user-select: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s ease;
+      list-style: none;
+    }
+
+    .sql-toggle:hover { background: #0f1118; }
+
+    .sql-toggle-icon {
+      font-size: 10px;
+      transition: transform 0.2s ease;
+      color: var(--accent);
+    }
+
+    details[open] .sql-toggle-icon { transform: rotate(90deg); }
+
+    .sql-tag {
+      background: var(--accent-dim);
+      color: var(--accent2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .sql-content {
+      background: var(--sql-bg);
+      padding: 14px 16px;
+      border-top: 1px solid var(--sql-border);
+      overflow-x: auto;
+    }
+
+    .sql-content code {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: #7dd3fc;
+      line-height: 1.7;
+      white-space: pre;
+    }
+
+    .sql-copy {
+      float: right;
+      background: transparent;
+      border: 1px solid var(--sql-border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      transition: all 0.15s ease;
+      margin-left: 8px;
+    }
+
+    .sql-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ===== RESULTS TABLE ===== */
+    .results-table-wrap {
+      margin-top: 12px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .results-table th {
+      background: var(--bg3);
+      padding: 9px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Space Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .results-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .results-table tr:last-child td { border-bottom: none; }
+
+    .results-table tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+
+    .results-count {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 6px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ===== ERROR BUBBLE ===== */
+    .bubble-error {
+      background: rgba(239,68,68,0.08);
+      border-color: rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .typing-indicator {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 4px 2px;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: typing 1.2s ease-in-out infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ===== INPUT AREA ===== */
+    .input-area {
+      padding: 20px 28px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 10px 10px 16px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    #userInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      resize: none;
+      min-height: 22px;
+      max-height: 120px;
+      line-height: 1.5;
+      padding: 1px 0;
+    }
+
+    #userInput::placeholder { color: var(--text-dim); }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 8px rgba(61,142,240,0.3);
+    }
+
+    .send-btn:hover { background: var(--accent2); transform: scale(1.05); }
+    .send-btn:active { transform: scale(0.97); }
+    .send-btn:disabled { background: var(--border); box-shadow: none; cursor: not-allowed; transform: none; }
+
+    .input-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .input-hint kbd {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== BADGE STATUT ===== */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green  { background: rgba(34,197,94,0.15);  color: #4ade80; }
+    .badge-orange { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .badge-red    { background: rgba(239,68,68,0.15);  color: #f87171; }
+    .badge-blue   { background: rgba(61,142,240,0.15); color: #60a5fa; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .messages { padding: 16px; }
+      .input-area { padding: 12px 16px 16px; }
+      .topbar { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🚌</div>
+      <div class="logo-text">
+        <span class="logo-title">TranspoBot</span>
+        <span class="logo-sub">Assistant IA Transport</span>
+      </div>
+    </div>
+
+    <span class="sidebar-label">Exemples de questions</span>
+
+    <button class="example-btn" onclick="fillExample(this)">Combien de trajets ont été effectués cette semaine ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Quel chauffeur a le plus d'incidents ce mois-ci ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Quels véhicules sont en maintenance ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Liste des trajets annulés ce mois</button>
+    <button class="example-btn" onclick="fillExample(this)">Quel est le nombre total de passagers cette semaine ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Quelles lignes ont eu des incidents ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Combien de chauffeurs sont actifs en ce moment ?</button>
+    <button class="example-btn" onclick="fillExample(this)">Quel véhicule a le plus de kilomètres ?</button>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">API connectée</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== CHAT AREA ===== -->
+  <main class="chat-area">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-title">Assistant IA — Text-to-SQL</span>
+        <span class="topbar-sub">Posez vos questions en langage naturel</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-icon" title="Effacer la conversation" onclick="clearChat()">🗑️</button>
+        <button class="btn-icon" title="Nouvelle conversation" onclick="newChat()">✏️</button>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="messages" id="messages">
+      <!-- Welcome state -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🚌</div>
+        <h2>Bonjour ! Je suis TranspoBot</h2>
+        <p>Posez-moi vos questions sur les véhicules, chauffeurs, trajets et incidents en langage naturel. Je génère automatiquement les requêtes SQL et vous réponds en français.</p>
+        <div class="welcome-chips">
+          <span class="chip" onclick="fillExample(this)">Trajets de la semaine</span>
+          <span class="chip" onclick="fillExample(this)">Véhicules en maintenance</span>
+          <span class="chip" onclick="fillExample(this)">Incidents du mois</span>
+          <span class="chip" onclick="fillExample(this)">Meilleur chauffeur</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea
+          id="userInput"
+          placeholder="Posez votre question en français ou en anglais..."
+          rows="1"
+          maxlength="500"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Envoyer">
+          ➤
+        </button>
+      </div>
+      <p class="input-hint">
+        Appuyez sur <kbd>Entrée</kbd> pour envoyer · <kbd>Shift+Entrée</kbd> pour un saut de ligne · Uniquement des requêtes SELECT
+      </p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ===== CONFIG =====
+  // Change cette URL quand le backend sera déployé
+  const API_URL = 'http://localhost:8000';
+
+  // ===== STATE =====
+  let isLoading = false;
+  let messageCount = 0;
+
+  // ===== TEXTAREA AUTO-RESIZE =====
+  const textarea = document.getElementById('userInput');
+  textarea.addEventListener('input', () => {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+  });
+
+  // ===== KEYBOARD SHORTCUTS =====
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // ===== FILL EXAMPLE =====
+  function fillExample(el) {
+    const text = el.textContent.trim();
+    textarea.value = text;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    textarea.focus();
+  }
+
+  // ===== SEND MESSAGE =====
+  async function sendMessage() {
+    const question = textarea.value.trim();
+    if (!question || isLoading) return;
+
+    // Cache le welcome
+    const welcome = document.getElementById('welcome');
+    if (welcome) welcome.remove();
+
+    // Reset input
+    textarea.value = '';
+    textarea.style.height = 'auto';
+
+    // Affiche le message utilisateur
+    appendUserMessage(question);
+
+    // Affiche le loader
+    const loaderId = appendTypingIndicator();
+
+    isLoading = true;
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+
+      removeTypingIndicator(loaderId);
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        appendBotError(err.detail || `Erreur serveur (${response.status})`);
+        return;
+      }
+
+      const data = await response.json();
+      appendBotMessage(data);
+
+    } catch (err) {
+      removeTypingIndicator(loaderId);
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        appendBotError("Impossible de joindre le serveur. Vérifiez que le backend FastAPI est bien lancé sur " + API_URL);
+        setStatus(false);
+      } else {
+        appendBotError("Une erreur inattendue s'est produite : " + err.message);
+      }
+    } finally {
+      isLoading = false;
+      document.getElementById('sendBtn').disabled = false;
+      textarea.focus();
+    }
+  }
+
+  // ===== APPEND USER MESSAGE =====
+  function appendUserMessage(text) {
+    messageCount++;
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const msg = document.createElement('div');
+    msg.className = 'message user';
+    msg.innerHTML = `
+      <div class="avatar">👤</div>
+      <div class="bubble">
+        <div class="bubble-meta">${now}</div>
+        <div class="bubble-text">${escapeHtml(text)}</div>
+      </div>
+    `;
+    document.getElementById('messages').appendChild(msg);
+    scrollToBottom();
+  }
+
+  // ===== APPEND BOT MESSAGE =====
+  function appendBotMessage(data) {
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const msg = document.createElement('div');
+    msg.className = 'message bot';
+
+    // Réponse textuelle
+    const answer = data.answer || data.response || data.message || "Réponse reçue.";
+    const sql    = data.sql || data.query || data.generated_sql || null;
+    const rows   = data.results || data.data || null;
+
+    let innerHtml = `
+      <div class="avatar">🤖</div>
+      <div class="bubble">
+        <div class="bubble-meta">${now} · TranspoBot IA</div>
+        <div class="bubble-text">${escapeHtml(answer)}</div>
+    `;
+
+    // Bloc SQL dépliable
+    if (sql) {
+      const sqlId = 'sql-' + Date.now();
+      innerHtml += `
+        <div class="sql-block">
+          <details>
+            <summary class="sql-toggle">
+              <span class="sql-toggle-icon">▶</span>
+              <span class="sql-tag">SQL</span>
+              <span>Voir la requête générée</span>
+            </summary>
+            <div class="sql-content">
+              <button class="sql-copy" onclick="copySql('${sqlId}')">Copier</button>
+              <code id="${sqlId}">${escapeHtml(formatSql(sql))}</code>
+            </div>
+          </details>
+        </div>
+      `;
+    }
+
+    // Tableau de résultats
+    if (rows && Array.isArray(rows) && rows.length > 0) {
+      innerHtml += buildResultsTable(rows);
+    } else if (rows && Array.isArray(rows) && rows.length === 0) {
+      innerHtml += `<p style="margin-top:10px;font-size:13px;color:var(--text-muted);font-style:italic;">Aucun résultat trouvé pour cette requête.</p>`;
+    }
+
+    innerHtml += `</div>`;
+    msg.innerHTML = innerHtml;
+    document.getElementById('messages').appendChild(msg);
+    scrollToBottom();
+  }
+
+  // ===== APPEND BOT ERROR =====
+  function appendBotError(message) {
+    const now = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const msg = document.createElement('div');
+    msg.className = 'message bot';
+    msg.innerHTML = `
+      <div class="avatar">🤖</div>
+      <div class="bubble bubble-error">
+        <div class="bubble-meta">${now} · TranspoBot IA</div>
+        <div class="bubble-text">⚠️ ${escapeHtml(message)}</div>
+      </div>
+    `;
+    document.getElementById('messages').appendChild(msg);
+    scrollToBottom();
+  }
+
+  // ===== TYPING INDICATOR =====
+  function appendTypingIndicator() {
+    const id = 'typing-' + Date.now();
+    const msg = document.createElement('div');
+    msg.className = 'message bot';
+    msg.id = id;
+    msg.innerHTML = `
+      <div class="avatar">🤖</div>
+      <div class="bubble">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    `;
+    document.getElementById('messages').appendChild(msg);
+    scrollToBottom();
+    return id;
+  }
+
+  function removeTypingIndicator(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  // ===== BUILD RESULTS TABLE =====
+  function buildResultsTable(rows) {
+    const headers = Object.keys(rows[0]);
+    let html = `
+      <div class="results-table-wrap">
+        <table class="results-table">
+          <thead><tr>
+            ${headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${rows.map(row => `
+              <tr>
+                ${headers.map(h => `<td>${formatCell(row[h])}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="results-count">${rows.length} résultat${rows.length > 1 ? 's' : ''} retourné${rows.length > 1 ? 's' : ''}</p>
+    `;
+    return html;
+  }
+
+  // ===== FORMAT CELL (badges pour statuts) =====
+  function formatCell(value) {
+    if (value === null || value === undefined) return '<span style="color:var(--text-dim)">—</span>';
+    const str = String(value);
+    const lower = str.toLowerCase();
+    if (['terminé', 'termine', 'actif', 'active', 'en service'].includes(lower))
+      return `<span class="badge badge-green">${escapeHtml(str)}</span>`;
+    if (['en cours', 'en_cours'].includes(lower))
+      return `<span class="badge badge-blue">${escapeHtml(str)}</span>`;
+    if (['maintenance', 'en maintenance'].includes(lower))
+      return `<span class="badge badge-orange">${escapeHtml(str)}</span>`;
+    if (['annulé', 'annule', 'inactif', 'hors service'].includes(lower))
+      return `<span class="badge badge-red">${escapeHtml(str)}</span>`;
+    return escapeHtml(str);
+  }
+
+  // ===== FORMAT SQL (coloration basique) =====
+  function formatSql(sql) {
+    return sql
+      .replace(/\n/g, '\n')
+      .trim();
+  }
+
+  // ===== COPY SQL =====
+  function copySql(id) {
+    const code = document.getElementById(id);
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent).then(() => {
+      const btn = code.previousElementSibling;
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copié';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
+  }
+
+  // ===== CLEAR CHAT =====
+  function clearChat() {
+    if (!confirm('Effacer toute la conversation ?')) return;
+    const messages = document.getElementById('messages');
+    messages.innerHTML = '';
+    const welcome = document.createElement('div');
+    welcome.className = 'welcome';
+    welcome.id = 'welcome';
+    welcome.innerHTML = `
+      <div class="welcome-icon">🚌</div>
+      <h2>Bonjour ! Je suis TranspoBot</h2>
+      <p>Posez-moi vos questions sur les véhicules, chauffeurs, trajets et incidents en langage naturel.</p>
+      <div class="welcome-chips">
+        <span class="chip" onclick="fillExample(this)">Trajets de la semaine</span>
+        <span class="chip" onclick="fillExample(this)">Véhicules en maintenance</span>
+        <span class="chip" onclick="fillExample(this)">Incidents du mois</span>
+        <span class="chip" onclick="fillExample(this)">Meilleur chauffeur</span>
+      </div>
+    `;
+    messages.appendChild(welcome);
+    messageCount = 0;
+  }
+
+  function newChat() { clearChat(); }
+
+  // ===== SCROLL =====
+  function scrollToBottom() {
+    const messages = document.getElementById('messages');
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // ===== ESCAPE HTML =====
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(String(text)));
+    return div.innerHTML;
+  }
+
+  // ===== STATUS INDICATOR =====
+  function setStatus(online) {
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (online) {
+      dot.classList.remove('offline');
+      text.textContent = 'API connectée';
+    } else {
+      dot.classList.add('offline');
+      text.textContent = 'API inaccessible';
+    }
+  }
+
+  // Vérification de l'API au chargement
+  async function checkApi() {
+    try {
+      const res = await fetch(`${API_URL}/`, { signal: AbortSignal.timeout(3000) });
+      setStatus(res.ok);
+    } catch {
+      setStatus(false);
+    }
+  }
+  checkApi();
+</script>
+</body>
+</html>
