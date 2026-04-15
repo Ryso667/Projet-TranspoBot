@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TranspoBot — Carte interactive</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="map-page">
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="layout-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+      <h1>TranspoBot</h1>
+      <p>Dakar · Mobilité urbaine</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a href="/"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Tableau de bord</a>
+      <a href="/vehicules-page"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Véhicules</a>
+      <a href="/trajets-page"><span class="nav-icon"><i class="fa-solid fa-road"></i></span> Trajets</a>
+      <a href="/map-page" class="active"><span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Carte</a>
+      <a href="/chat-page"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
+    </nav>
+    <div class="sidebar-footer">ESP / UCAD — GLSi L3 — 2026</div>
+  </aside>
+
+  <div class="main">
+    <header class="app-navbar">
+      <div class="navbar-brand">
+        <span class="navbar-logo" aria-hidden="true"><i class="fa-solid fa-bus"></i></span>
+        <span class="brand-text">TranspoBot</span>
+      </div>
+      <h1 class="page-heading">Carte des trajets en cours</h1>
+      <div class="navbar-right">
+        <span class="badge-live">Temps réel</span>
+        <time id="liveClock" class="live-clock" datetime="">--:--:--</time>
+        <button type="button" class="theme-toggle" id="themeToggle" title="Thème clair / sombre"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="content map-content">
+      <div id="map" class="map-container" aria-label="Carte interactive de Dakar"></div>
+      <aside class="map-side-panel">
+        <div class="map-side-header">
+          <h3>Trajets en cours <span id="trajetsCount" class="map-count-badge">0</span></h3>
+          <p id="lastUpdate" class="map-last-update">Dernière mise à jour : --:--:--</p>
+        </div>
+        <div id="trajetsList" class="map-trajets-list"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+  <script>
+    const DAKAR_CENTER = { lat: 14.6937, lng: -17.4441 };
+    const ROUTE_COLORS = ['#e74c3c', '#2980b9', '#27ae60', '#f39c12', '#8e44ad'];
+    const ROUTING_SERVICE_URL = 'https://router.project-osrm.org/route/v1';
+
+    const DAKAR_COORDS = {
+      'Gare Routiere Dakar': { lat: 14.6937, lng: -17.4441 },
+      'Gare Routière Dakar': { lat: 14.6937, lng: -17.4441 },
+      'Place de lIndependance': { lat: 14.6928, lng: -17.4467 },
+      'Place de lIndépendance': { lat: 14.6928, lng: -17.4467 },
+      'Marche Sandaga': { lat: 14.6989, lng: -17.4542 },
+      'Marché Sandaga': { lat: 14.6989, lng: -17.4542 },
+      'Universite Cheikh Anta Diop': { lat: 14.6914, lng: -17.4522 },
+      'Université Cheikh Anta Diop': { lat: 14.6914, lng: -17.4522 },
+      'Pikine Gare': { lat: 14.7547, lng: -17.3922 },
+      'Thiaroye': { lat: 14.7386, lng: -17.3542 },
+      'Guediawaye Centre': { lat: 14.7731, lng: -17.4024 },
+      'Guédiawaye Centre': { lat: 14.7731, lng: -17.4024 },
+      'Rufisque Centre': { lat: 14.7156, lng: -17.2736 },
+      'Hopital Principal': { lat: 14.6930, lng: -17.4470 },
+      'Hôpital Principal': { lat: 14.6930, lng: -17.4470 },
+      'Almadies': { lat: 14.7602, lng: -17.5142 },
+      'Plateau': { lat: 14.6928, lng: -17.4467 },
+      'Medina': { lat: 14.6989, lng: -17.4542 },
+      'Médina': { lat: 14.6989, lng: -17.4542 }
+    };
+
+    const map = L.map('map', { zoomControl: true }).setView([DAKAR_CENTER.lat, DAKAR_CENTER.lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const arretsLayer = L.layerGroup().addTo(map);
+    const trajetsLayer = L.layerGroup().addTo(map);
+    const tripRegistry = new Map();
+
+    function normalizeStopName(name) {
+      return (name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+    }
+
+    function getCoordsForStop(stopName) {
+      const normalized = normalizeStopName(stopName);
+      return DAKAR_COORDS[normalized] || null;
+    }
+
+    function getVehicleIconName(type) {
+      const normalized = normalizeStopName(type || '');
+      if (/bus|autocar|minibus/.test(normalized)) return 'fa-bus';
+      return 'fa-car';
+    }
+
+    function busDivIcon(color, iconName = 'fa-bus') {
+      return L.divIcon({
+        className: 'bus-marker-wrapper',
+        html: `
+          <div class="bus-pulse" style="--trip-color:${color}">
+            <i class="fa-solid ${iconName}"></i>
+          </div>
+        `,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+    }
+
+    function midpoint(a, b) {
+      return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+    }
+
+    function tripPopupContent(trajet) {
+      return `
+        <strong>${trajet.chauffeur_prenom || ''} ${trajet.chauffeur_nom || ''}</strong><br>
+        Véhicule : ${trajet.vehicule_immat || 'N/A'} (${trajet.vehicule_marque || 'N/A'})<br>
+        Ligne : ${trajet.ligne_nom || 'N/A'}<br>
+        ${trajet.arret_depart_nom || 'N/A'} &rarr; ${trajet.arret_arrivee_nom || 'N/A'}
+      `;
+    }
+
+    function renderArrets(arrets) {
+      arretsLayer.clearLayers();
+      arrets.forEach((arret) => {
+        const coords = getCoordsForStop(arret.nom_arret);
+        if (!coords) return;
+
+        L.circleMarker([coords.lat, coords.lng], {
+          radius: 5,
+          color: '#2980b9',
+          fillColor: '#3498db',
+          fillOpacity: 0.9,
+          weight: 1.5
+        })
+          .bindPopup(`<strong>${arret.nom_arret}</strong><br>${arret.localisation || 'Localisation inconnue'}`)
+          .addTo(arretsLayer);
+      });
+    }
+
+    function getRoutePoints(trajet) {
+      const stops = trajet.ligne_stops || [];
+      const departName = normalizeStopName(trajet.arret_depart_nom);
+      const arriveeName = normalizeStopName(trajet.arret_arrivee_nom);
+      const normalizedStops = stops.map((stop) => ({
+        ...stop,
+        normalized: normalizeStopName(stop.nom_arret),
+      }));
+
+      const departIndex = normalizedStops.findIndex((s) => s.normalized === departName);
+      const arriveeIndex = normalizedStops.findIndex((s) => s.normalized === arriveeName);
+      if (departIndex === -1 || arriveeIndex === -1) return null;
+
+      const slice = departIndex <= arriveeIndex
+        ? normalizedStops.slice(departIndex, arriveeIndex + 1)
+        : normalizedStops.slice(arriveeIndex, departIndex + 1).reverse();
+
+      const routePoints = slice
+        .map((stop) => getCoordsForStop(stop.nom_arret))
+        .filter(Boolean);
+
+      return routePoints.length >= 2 ? routePoints : null;
+    }
+
+    function routeAlongRoads(points) {
+      return new Promise((resolve, reject) => {
+        if (!points || points.length < 2 || !L.Routing) {
+          reject(new Error('Points de route invalides ou routage indisponible'));
+          return;
+        }
+
+        const waypoints = points.map((point) => L.Routing.waypoint(L.latLng(point.lat, point.lng)));
+        const router = L.Routing.osrmv1({ serviceUrl: ROUTING_SERVICE_URL });
+
+        router.route(waypoints, (err, routes) => {
+          if (err || !routes || !routes.length) {
+            reject(err || new Error('Aucune route trouvée'));
+            return;
+          }
+          resolve(routes[0]);
+        });
+      });
+    }
+
+    function buildRouteLine(route, color) {
+      return L.Routing.line(route, {
+        styles: [{ color, weight: 5, opacity: 0.85 }],
+        addWaypoints: false,
+        extendToWaypoints: false,
+        missingRouteTolerance: 0,
+      });
+    }
+
+    function renderTrajets(trajets) {
+      trajetsLayer.clearLayers();
+      tripRegistry.clear();
+
+      trajets.forEach(async (trajet, index) => {
+        const routePoints = getRoutePoints(trajet);
+        const depart = getCoordsForStop(trajet.arret_depart_nom);
+        const arrivee = getCoordsForStop(trajet.arret_arrivee_nom);
+        if (!depart || !arrivee) return;
+
+        const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+        const popup = tripPopupContent(trajet);
+        const fallbackLine = L.polyline(
+          [
+            [depart.lat, depart.lng],
+            [arrivee.lat, arrivee.lng]
+          ],
+          { color, weight: 4, opacity: 0.35, dashArray: '8,6' }
+        ).addTo(trajetsLayer);
+
+        let markerCoords = midpoint(depart, arrivee);
+        let routeLine = null;
+
+        if (routePoints) {
+          routePoints.forEach((coords) => {
+            L.circleMarker([coords.lat, coords.lng], {
+              radius: 4,
+              color,
+              fillColor: '#ffffff',
+              fillOpacity: 1,
+              weight: 2,
+            }).addTo(trajetsLayer);
+          });
+
+          try {
+            const route = await routeAlongRoads(routePoints);
+            routeLine = buildRouteLine(route, color).addTo(trajetsLayer);
+            routeLine.bindPopup(popup);
+            trajetsLayer.removeLayer(fallbackLine);
+            const routePath = L.polyline(route.coordinates.map((c) => [c.lat, c.lng]));
+            markerCoords = routePath.getCenter();
+          } catch (error) {
+            console.warn('Routage impossible pour le trajet', trajet.id_trajet, error);
+          }
+        }
+
+        const iconName = getVehicleIconName(trajet.vehicule_type || trajet.vehicule_marque);
+        const busMarker = L.marker([markerCoords.lat, markerCoords.lng], {
+          icon: busDivIcon(color, iconName)
+        })
+          .bindPopup(popup)
+          .addTo(trajetsLayer);
+
+        tripRegistry.set(String(trajet.id_trajet), { center: markerCoords, popupTarget: busMarker, color, trajet });
+      });
+    }
+
+    function renderSidePanel(trajets) {
+      const listEl = document.getElementById('trajetsList');
+      const countEl = document.getElementById('trajetsCount');
+      countEl.textContent = String(trajets.length);
+
+      if (!trajets.length) {
+        listEl.innerHTML = '<div class="empty-state">Aucun trajet en cours</div>';
+        return;
+      }
+
+      listEl.innerHTML = trajets.map((trajet, index) => {
+        const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+        return `
+          <button type="button" class="map-trip-card" data-trip-id="${trajet.id_trajet}">
+            <span class="trip-color-dot" style="background:${color};"></span>
+            <div class="trip-card-content">
+              <strong>${trajet.chauffeur_prenom || ''} ${trajet.chauffeur_nom || ''}</strong>
+              <span>Véhicule : ${trajet.vehicule_immat || 'N/A'}</span>
+              <span>Ligne : ${trajet.ligne_nom || 'N/A'}</span>
+              <span>${trajet.arret_depart_nom || 'N/A'} &rarr; ${trajet.arret_arrivee_nom || 'N/A'}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.map-trip-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const ref = tripRegistry.get(card.getAttribute('data-trip-id'));
+          if (!ref) return;
+          map.setView([ref.center.lat, ref.center.lng], 14, { animate: true });
+          ref.popupTarget.openPopup();
+        });
+      });
+    }
+
+    function updateTimestamp() {
+      const stamp = new Date().toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      document.getElementById('lastUpdate').textContent = `Dernière mise à jour : ${stamp}`;
+    }
+
+    async function refreshMapData() {
+      try {
+        const payload = await fetchAPI('/map-data');
+        const arrets = payload.arrets || [];
+        const trajets = payload.trajets_en_cours || [];
+        renderArrets(arrets);
+        renderTrajets(trajets);
+        renderSidePanel(trajets);
+        updateTimestamp();
+      } catch (error) {
+        document.getElementById('trajetsList').innerHTML =
+          `<div class="empty-state">Erreur de chargement : ${error.message}</div>`;
+      }
+    }
+
+    refreshMapData();
+    setInterval(refreshMapData, 30000);
+  </script>
+</body>
+</html>

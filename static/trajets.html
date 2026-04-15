@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TranspoBot — Trajets & Incidents</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="layout-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+      <h1>TranspoBot</h1>
+      <p>Dakar · Mobilité urbaine</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a href="/"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Tableau de bord</a>
+      <a href="/vehicules-page"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Véhicules</a>
+      <a href="/trajets-page" class="active"><span class="nav-icon"><i class="fa-solid fa-road"></i></span> Trajets</a>
+      <a href="/map-page"><span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Carte</a>
+      <a href="/chat-page"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
+    </nav>
+    <div class="sidebar-footer">ESP / UCAD — GLSi L3 — 2026</div>
+  </aside>
+
+  <div class="main">
+    <header class="app-navbar">
+      <div class="navbar-brand">
+        <span class="navbar-logo" aria-hidden="true"><i class="fa-solid fa-bus"></i></span>
+        <span class="brand-text">TranspoBot</span>
+      </div>
+      <h1 class="page-heading">Trajets &amp; Incidents</h1>
+      <div class="navbar-right">
+        <span class="badge-live">Système actif</span>
+        <time id="liveClock" class="live-clock" datetime="">--:--:--</time>
+        <button type="button" class="theme-toggle" id="themeToggle" title="Thème clair / sombre"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="tabs-root">
+        <div class="tabs-bar" role="tablist" aria-label="Sections opérations">
+          <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="trajets">
+            <i class="fa-solid fa-road" aria-hidden="true"></i> Trajets
+          </button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="incidents">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Incidents
+          </button>
+        </div>
+
+        <div class="tab-panels">
+          <div id="tab-panel-trajets" class="tab-panel active" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-road"></i></span> Trajets récents</h3>
+                  <p>50 derniers trajets</p>
+                </div>
+              </div>
+              <div class="filters">
+                <div class="filter-group">
+                  <label for="trajetStatut">Statut :</label>
+                  <select id="trajetStatut" onchange="loadTrajets()">
+                    <option value="">Tous</option>
+                    <option value="en cours">En cours</option>
+                    <option value="terminé">Terminé</option>
+                    <option value="annulé">Annulé</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-container" id="trajetsTable">
+                <div class="skeleton skeleton-table" style="min-height:220px" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-panel-incidents" class="tab-panel" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span> Incidents</h3>
+                  <p>Tous les incidents signalés</p>
+                </div>
+              </div>
+              <div class="table-container" id="incidentsTable">
+                <div class="skeleton skeleton-table" style="min-height:220px" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    async function loadTrajets() {
+      const el = document.getElementById('trajetsTable');
+      const statut = document.getElementById('trajetStatut').value;
+      showLoading(el);
+      try {
+        const url = '/trajets?limite=50' + (statut ? `&statut=${encodeURIComponent(statut)}` : '');
+        const data = await fetchAPI(url);
+        if (!data.length) { el.innerHTML = '<div class="empty-state">Aucun trajet trouvé</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr>
+            <th>#</th><th>Départ</th><th>Arrivée</th>
+            <th>Chauffeur</th><th>Véhicule</th><th>Places</th><th>Statut</th>
+          </tr></thead>
+          <tbody>${data.map(t => `
+            <tr>
+              <td><strong>#${t.id_trajet}</strong></td>
+              <td>${formatDate(t.date_heure_depart)}</td>
+              <td>${t.date_heure_arrivee ? formatDate(t.date_heure_arrivee) : '—'}</td>
+              <td>${t.chauffeur_prenom || ''} ${t.chauffeur_nom || '—'}</td>
+              <td>${t.immatriculation}</td>
+              <td>${t.nombrePlaces}</td>
+              <td>${getStatusBadge(t.statut)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    async function loadIncidents() {
+      const el = document.getElementById('incidentsTable');
+      showLoading(el);
+      try {
+        const data = await fetchAPI('/incidents');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">Aucun incident signalé</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr>
+            <th>#</th><th>Type</th><th>Description</th>
+            <th>Chauffeur</th><th>Véhicule</th><th>Date</th><th>Gravité</th>
+          </tr></thead>
+          <tbody>${data.map(i => `
+            <tr>
+              <td><strong>#${i.id_incident}</strong></td>
+              <td>${i.type_incident}</td>
+              <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.description}</td>
+              <td>${i.chauffeur_prenom || ''} ${i.chauffeur_nom || '—'}</td>
+              <td>${i.vehicule_immat || i.immatriculation}</td>
+              <td>${formatDate(i.date_incident)}</td>
+              <td>${getGraviteBadge(i.gravite)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    loadTrajets();
+    loadIncidents();
+  </script>
+</body>
+</html>

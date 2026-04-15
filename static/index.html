@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TranspoBot — Tableau de bord</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="layout-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+      <h1>TranspoBot</h1>
+      <p>Dakar · Mobilité urbaine</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a href="/" class="active"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Tableau de bord</a>
+      <a href="/vehicules-page"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Véhicules</a>
+      <a href="/trajets-page"><span class="nav-icon"><i class="fa-solid fa-road"></i></span> Trajets</a>
+      <a href="/map-page"><span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Carte</a>
+      <a href="/chat-page"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
+    </nav>
+    <div class="sidebar-footer">ESP / UCAD — GLSi L3 — 2026</div>
+  </aside>
+
+  <div class="main">
+    <header class="app-navbar">
+      <div class="navbar-brand">
+        <span class="navbar-logo" aria-hidden="true"><i class="fa-solid fa-bus"></i></span>
+        <span class="brand-text">TranspoBot</span>
+      </div>
+      <h1 class="page-heading">Tableau de bord</h1>
+      <div class="navbar-right">
+        <span class="badge-live">Système actif</span>
+        <time id="liveClock" class="live-clock" datetime="">--:--:--</time>
+        <button type="button" class="theme-toggle" id="themeToggle" title="Thème clair / sombre"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="hero-banner" aria-label="Bienvenue">
+        <div class="hero-inner">
+          <h2>Plateforme de gestion du transport urbain</h2>
+          <p>Pilotez la flotte, les trajets et les incidents pour un réseau plus fiable à Dakar.</p>
+          <div class="hero-tags">
+            <span class="hero-tag"><i class="fa-solid fa-location-dot"></i> Sénégal</span>
+            <span class="hero-tag"><i class="fa-solid fa-gauge-high"></i> Temps réel</span>
+            <span class="hero-tag"><i class="fa-solid fa-graduation-cap"></i> Projet académique</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="kpi-grid" id="kpiGrid" aria-busy="true">
+        <div class="skeleton-kpi-grid">
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+          <div class="skeleton skeleton-kpi-card" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-road"></i></span> Trajets récents</h3>
+              <p>10 derniers trajets enregistrés</p>
+            </div>
+          </div>
+          <div class="table-container" id="trajetsRecents">
+            <div class="skeleton skeleton-table" style="min-height:180px" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span> Incidents récents</h3>
+              <p>Derniers incidents signalés</p>
+            </div>
+          </div>
+          <div class="table-container" id="incidentsRecents">
+            <div class="skeleton skeleton-table" style="min-height:180px" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    async function loadKPI() {
+      const grid = document.getElementById('kpiGrid');
+      renderKpiSkeletons(grid, 8);
+      try {
+        const kpi = await fetchAPI('/kpi');
+        grid.innerHTML = `
+          <div class="kpi-card blue">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-week"></i></div>
+            <div class="kpi-value" data-target="${kpi.total_trajets_semaine}">0</div>
+            <div class="kpi-label">Trajets cette semaine</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-play"></i></div>
+            <div class="kpi-value" data-target="${kpi.trajets_en_cours}">0</div>
+            <div class="kpi-label">Trajets en cours</div>
+          </div>
+          <div class="kpi-card teal">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="kpi-value" data-target="${kpi.trajets_termines}">0</div>
+            <div class="kpi-label">Trajets terminés</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <div class="kpi-value" data-target="${kpi.vehicules_en_maintenance}">0</div>
+            <div class="kpi-label">Véhicules en maintenance</div>
+          </div>
+          <div class="kpi-card red">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="kpi-value" data-target="${kpi.incidents_ce_mois}">0</div>
+            <div class="kpi-label">Incidents ce mois</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-user-group"></i></div>
+            <div class="kpi-value" data-target="${kpi.total_chauffeurs_actifs}">0</div>
+            <div class="kpi-label">Chauffeurs actifs</div>
+          </div>
+          <div class="kpi-card blue">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+            <div class="kpi-value" data-target="${kpi.total_vehicules}">0</div>
+            <div class="kpi-label">Total véhicules</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="kpi-value kpi-value-text">${kpi.chauffeur_plus_incidents}</div>
+            <div class="kpi-label">Chauffeur + incidents</div>
+          </div>
+        `;
+        grid.setAttribute('aria-busy', 'false');
+        runKpiCountUp(grid);
+      } catch (e) {
+        showError(grid, 'Impossible de charger les KPI : ' + e.message);
+        grid.setAttribute('aria-busy', 'false');
+      }
+    }
+
+    async function loadTrajetsRecents() {
+      const el = document.getElementById('trajetsRecents');
+      try {
+        const data = await fetchAPI('/trajets?limite=8');
+        if (!data.length) { el.innerHTML = '<div class="empty-state">Aucun trajet</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr><th>Date départ</th><th>Chauffeur</th><th>Statut</th></tr></thead>
+          <tbody>${data.map(t => `
+            <tr>
+              <td>${formatDate(t.date_heure_depart)}</td>
+              <td>${t.chauffeur_prenom || ''} ${t.chauffeur_nom || '—'}</td>
+              <td>${getStatusBadge(t.statut)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    async function loadIncidentsRecents() {
+      const el = document.getElementById('incidentsRecents');
+      try {
+        const data = await fetchAPI('/incidents');
+        const recent = data.slice(0, 8);
+        if (!recent.length) { el.innerHTML = '<div class="empty-state">Aucun incident</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr><th>Type</th><th>Véhicule</th><th>Gravité</th></tr></thead>
+          <tbody>${recent.map(i => `
+            <tr>
+              <td>${i.type_incident}</td>
+              <td>${i.vehicule_immat || i.immatriculation}</td>
+              <td>${getGraviteBadge(i.gravite)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    loadKPI();
+    loadTrajetsRecents();
+    loadIncidentsRecents();
+  </script>
+</body>
+</html>

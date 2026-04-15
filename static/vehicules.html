@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TranspoBot — Véhicules & Chauffeurs</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="layout-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+      <h1>TranspoBot</h1>
+      <p>Dakar · Mobilité urbaine</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a href="/"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Tableau de bord</a>
+      <a href="/vehicules-page" class="active"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Véhicules</a>
+      <a href="/trajets-page"><span class="nav-icon"><i class="fa-solid fa-road"></i></span> Trajets</a>
+      <a href="/map-page"><span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Carte</a>
+      <a href="/chat-page"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
+    </nav>
+    <div class="sidebar-footer">ESP / UCAD — GLSi L3 — 2026</div>
+  </aside>
+
+  <div class="main">
+    <header class="app-navbar">
+      <div class="navbar-brand">
+        <span class="navbar-logo" aria-hidden="true"><i class="fa-solid fa-bus"></i></span>
+        <span class="brand-text">TranspoBot</span>
+      </div>
+      <h1 class="page-heading">Véhicules &amp; Chauffeurs</h1>
+      <div class="navbar-right">
+        <span class="badge-live">Système actif</span>
+        <time id="liveClock" class="live-clock" datetime="">--:--:--</time>
+        <button type="button" class="theme-toggle" id="themeToggle" title="Thème clair / sombre"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="tabs-root">
+        <div class="tabs-bar" role="tablist" aria-label="Sections flotte">
+          <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="vehicules">
+            <i class="fa-solid fa-bus" aria-hidden="true"></i> Véhicules
+          </button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="chauffeurs">
+            <i class="fa-solid fa-user-tie" aria-hidden="true"></i> Chauffeurs
+          </button>
+        </div>
+
+        <div class="tab-panels">
+          <div id="tab-panel-vehicules" class="tab-panel active" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-bus"></i></span> Flotte de véhicules</h3>
+                  <p>Tous les véhicules enregistrés</p>
+                </div>
+              </div>
+              <div class="filters">
+                <div class="filter-group">
+                  <label for="vehiculeStatut">Filtrer par statut :</label>
+                  <select id="vehiculeStatut" onchange="loadVehicules()">
+                    <option value="">Tous</option>
+                    <option value="en service">En service</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="hors service">Hors service</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-container" id="vehiculesTable">
+                <div class="skeleton skeleton-table" style="min-height:200px" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-panel-chauffeurs" class="tab-panel" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3><span class="card-head-icon" aria-hidden="true"><i class="fa-solid fa-user-tie"></i></span> Chauffeurs</h3>
+                  <p>Tous les chauffeurs enregistrés</p>
+                </div>
+              </div>
+              <div class="filters">
+                <div class="filter-group">
+                  <label for="chauffeurStatut">Filtrer par statut :</label>
+                  <select id="chauffeurStatut" onchange="loadChauffeurs()">
+                    <option value="">Tous</option>
+                    <option value="actif">Actif</option>
+                    <option value="inactif">Inactif</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-container" id="chauffeursTable">
+                <div class="skeleton skeleton-table" style="min-height:200px" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    async function loadVehicules() {
+      const el = document.getElementById('vehiculesTable');
+      const statut = document.getElementById('vehiculeStatut').value;
+      showLoading(el);
+      try {
+        const url = '/vehicules' + (statut ? `?statut=${encodeURIComponent(statut)}` : '');
+        const data = await fetchAPI(url);
+        if (!data.length) { el.innerHTML = '<div class="empty-state">Aucun véhicule trouvé</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr>
+            <th>Immatriculation</th><th>Marque / Modèle</th><th>Type</th>
+            <th>Capacité</th><th>Kilométrage</th><th>Statut</th>
+          </tr></thead>
+          <tbody>${data.map(v => `
+            <tr>
+              <td><strong>${v.immatriculation}</strong></td>
+              <td>${v.marque} ${v.modele}</td>
+              <td>${v.typeVehicule}</td>
+              <td>${v.capacite} places</td>
+              <td>${(v.kilometrage || 0).toLocaleString('fr-FR')} km</td>
+              <td>${getStatusBadge(v.statut)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    async function loadChauffeurs() {
+      const el = document.getElementById('chauffeursTable');
+      const statut = document.getElementById('chauffeurStatut').value;
+      showLoading(el);
+      try {
+        const url = '/chauffeurs' + (statut ? `?statut=${encodeURIComponent(statut)}` : '');
+        const data = await fetchAPI(url);
+        if (!data.length) { el.innerHTML = '<div class="empty-state">Aucun chauffeur trouvé</div>'; return; }
+        el.innerHTML = `<table>
+          <thead><tr>
+            <th>Nom complet</th><th>Téléphone</th><th>Email</th>
+            <th>N° Permis</th><th>Statut</th>
+          </tr></thead>
+          <tbody>${data.map(c => `
+            <tr>
+              <td><strong>${c.prenom} ${c.nom}</strong></td>
+              <td>${c.telephone || '—'}</td>
+              <td>${c.email || '—'}</td>
+              <td>${c.numero_permis || '—'}</td>
+              <td>${getStatusBadge(c.statut)}</td>
+            </tr>`).join('')}
+          </tbody></table>`;
+      } catch (e) { showError(el, e.message); }
+    }
+
+    loadVehicules();
+    loadChauffeurs();
+  </script>
+</body>
+</html>

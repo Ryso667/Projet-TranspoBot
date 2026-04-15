@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TranspoBot — Assistant IA</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="chat-page">
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <div class="layout-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-hidden="true"><i class="fa-solid fa-bus"></i></div>
+      <h1>TranspoBot</h1>
+      <p>Dakar · Mobilité urbaine</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      <a href="/"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Tableau de bord</a>
+      <a href="/vehicules-page"><span class="nav-icon"><i class="fa-solid fa-bus"></i></span> Véhicules</a>
+      <a href="/trajets-page"><span class="nav-icon"><i class="fa-solid fa-road"></i></span> Trajets</a>
+      <a href="/map-page"><span class="nav-icon"><i class="fa-solid fa-map-location-dot"></i></span> Carte</a>
+      <a href="/chat-page" class="active"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
+    </nav>
+    <div class="sidebar-footer">ESP / UCAD — GLSi L3 — 2026</div>
+  </aside>
+
+  <div class="main">
+    <header class="app-navbar">
+      <div class="navbar-brand">
+        <span class="navbar-logo" aria-hidden="true"><i class="fa-solid fa-bus"></i></span>
+        <span class="brand-text">TranspoBot</span>
+      </div>
+      <h1 class="page-heading">Assistant IA</h1>
+      <div class="navbar-right">
+        <span class="badge-live">Groq · Llama&nbsp;3.3</span>
+        <time id="liveClock" class="live-clock" datetime="">--:--:--</time>
+        <button type="button" class="theme-toggle" id="themeToggle" title="Thème clair / sombre"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <div class="welcome-msg" id="welcomeMsg">
+            <div class="bot-logo" aria-hidden="true"><i class="fa-solid fa-robot"></i></div>
+            <h3>Bonjour ! Je suis TranspoBot</h3>
+            <p>Posez-moi des questions sur vos données de transport. Je génère automatiquement les requêtes SQL et vous réponds en français.</p>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <div class="quick-questions">
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Combien de trajets cette semaine ?')">Trajets cette semaine</button>
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Quels véhicules sont en maintenance ?')">Véhicules en maintenance</button>
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Quels sont les incidents graves ?')">Incidents graves</button>
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Combien de chauffeurs actifs y a-t-il ?')">Chauffeurs actifs</button>
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Quels trajets sont en cours en ce moment ?')">Trajets en cours</button>
+            <button type="button" class="quick-btn" title="Envoyer cette question" onclick="askQuestion('Quel chauffeur a eu le plus d\'incidents ?')">Top incidents par chauffeur</button>
+          </div>
+
+          <form class="chat-input-form" id="chatForm" onsubmit="sendMessage(event)">
+            <textarea
+              id="chatInput"
+              placeholder="Posez votre question en français... (ex: Combien de trajets terminés ce mois ?)"
+              rows="1"
+              onkeydown="handleKey(event)"
+            ></textarea>
+            <button type="submit" class="btn-send" id="sendBtn" title="Envoyer le message" aria-label="Envoyer">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    const messagesEl = document.getElementById('chatMessages');
+    const inputEl = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+      }
+    }
+
+    function askQuestion(q) {
+      inputEl.value = q;
+      document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    }
+
+    function addMessage(role, content) {
+      const welcomeMsg = document.getElementById('welcomeMsg');
+      if (welcomeMsg) welcomeMsg.remove();
+
+      const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+
+      if (role === 'user') {
+        div.innerHTML = `
+          <div class="msg-avatar" title="Vous"><i class="fa-solid fa-user"></i></div>
+          <div class="msg-content">
+            <div class="msg-bubble">${escapeHtml(content)}</div>
+            <div class="msg-time">${time}</div>
+          </div>`;
+      } else {
+        div.innerHTML = `
+          <div class="msg-avatar" title="TranspoBot"><i class="fa-solid fa-robot"></i></div>
+          <div class="msg-content" id="bot-${Date.now()}">
+            ${content}
+          </div>`;
+      }
+
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return div;
+    }
+
+    function addBotMessage(answer, sql, results) {
+      const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const welcomeMsg = document.getElementById('welcomeMsg');
+      if (welcomeMsg) welcomeMsg.remove();
+
+      const loadingBubble = messagesEl.querySelector('.typing-row');
+      if (loadingBubble) loadingBubble.closest('.message').remove();
+
+      let resultsHtml = '';
+      if (results && results.length > 0) {
+        const keys = Object.keys(results[0]);
+        resultsHtml = `
+          <div class="results-table-mini">
+            <p class="chat-detail-caption">Extrait des données (tableau)</p>
+            <table>
+              <thead><tr>${keys.map(k => `<th>${escapeHtml(k)}</th>`).join('')}</tr></thead>
+              <tbody>${results.slice(0, 10).map(row =>
+                `<tr>${keys.map(k => `<td>${row[k] !== null && row[k] !== undefined ? escapeHtml(String(row[k])) : '—'}</td>`).join('')}</tr>`
+              ).join('')}</tbody>
+            </table>
+            ${results.length > 10 ? `<p style="font-size:12px;color:var(--text-muted);margin-top:6px;">... et ${results.length - 10} ligne(s) supplémentaire(s)</p>` : ''}
+          </div>`;
+      } else if (Array.isArray(results) && results.length === 0 && sql) {
+        resultsHtml = `<p class="results-empty-hint">Aucune ligne retournée pour cette requête.</p>`;
+      }
+
+      let sqlHtml = '';
+      if (sql) {
+        sqlHtml = `<p class="chat-detail-caption chat-detail-caption--sql">Requête exécutée (technique)</p><div class="sql-block">${escapeHtml(sql)}</div>`;
+      }
+
+      let detailsBlock = '';
+      if (sql) {
+        detailsBlock = `
+          <details class="chat-sql-details">
+            <summary><i class="fa-solid fa-table" aria-hidden="true"></i> Détails optionnels (tableau &amp; SQL)</summary>
+            <div class="chat-sql-body">
+              ${resultsHtml}
+              ${sqlHtml}
+            </div>
+          </details>`;
+      }
+
+      const div = document.createElement('div');
+      div.className = 'message bot';
+      div.innerHTML = `
+        <div class="msg-avatar" title="TranspoBot"><i class="fa-solid fa-robot"></i></div>
+        <div class="msg-content">
+          <div class="msg-bubble">
+            <div class="msg-answer-text">${escapeHtml(answer).replace(/\n/g, '<br>')}</div>
+            ${detailsBlock}
+          </div>
+          <div class="msg-time">${time}</div>
+        </div>`;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function sendMessage(e) {
+      e.preventDefault();
+      const question = inputEl.value.trim();
+      if (!question) return;
+
+      inputEl.value = '';
+      sendBtn.disabled = true;
+
+      addMessage('user', question);
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message bot typing-row';
+      loadingDiv.innerHTML = `
+        <div class="msg-avatar" title="TranspoBot"><i class="fa-solid fa-robot"></i></div>
+        <div class="msg-content">
+          <div class="msg-bubble">
+            <div class="typing-indicator" aria-label="L'assistant rédige une réponse">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>`;
+      messagesEl.appendChild(loadingDiv);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        loadingDiv.remove();
+        addBotMessage(data.answer, data.sql, data.results);
+      } catch (err) {
+        loadingDiv.remove();
+        addBotMessage('Erreur de connexion au serveur. Veuillez réessayer.', null, null);
+      } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+  </script>
+</body>
+</html>
