@@ -6,7 +6,7 @@
   <title>TranspoBot — Tableau de bord</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="/static/style.css">
-</head> 
+</head>
 <body>
   <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Ouvrir le menu" aria-expanded="false" title="Menu">
     <i class="fa-solid fa-bars"></i>
@@ -194,25 +194,5 @@
     loadTrajetsRecents();
     loadIncidentsRecents();
   </script>
-  <script>// Gestion de l'ouverture du menu sur Mobile
-const sidebar = document.getElementById('sidebar');
-const toggleBtn = document.getElementById('sidebarToggle');
-const overlay = document.getElementById('sidebarOverlay');
-
-if (toggleBtn) {
-  toggleBtn.addEventListener('click', () => {
-    document.body.classList.toggle('sidebar-open');
-    const expanded = document.body.classList.contains('sidebar-open');
-    toggleBtn.setAttribute('aria-expanded', expanded);
-  });
-}
-
-// Fermer le menu si on clique sur l'overlay (le fond sombre)
-if (overlay) {
-  overlay.addEventListener('click', () => {
-    document.body.classList.remove('sidebar-open');
-    toggleBtn.setAttribute('aria-expanded', 'false');
-  });
-}</script>
 </body>
 </html>
