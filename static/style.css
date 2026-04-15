@@ -458,21 +458,10 @@ html.theme-dark .live-clock {
 /* ——— KPI ——— */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* FIX: utilise auto-fill avec une taille min pour éviter le débordement sur petits écrans */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.75rem;
-}
-
-@media (max-width: 1200px) {
-  .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .kpi-card {
@@ -827,23 +816,12 @@ input[type='text']:focus {
   }
 }
 
+/* FIX: skeleton grid aligné sur la même logique que .kpi-grid */
 .skeleton-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.75rem;
-}
-
-@media (max-width: 1200px) {
-  .skeleton-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .skeleton-kpi-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .skeleton-kpi-card {
