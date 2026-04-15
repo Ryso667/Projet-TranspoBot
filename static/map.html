@@ -142,24 +142,66 @@
       `;
     }
 
-    function renderArrets(arrets) {
-      arretsLayer.clearLayers();
-      arrets.forEach((arret) => {
-        const coords = getCoordsForStop(arret.nom_arret);
-        if (!coords) return;
+    function renderTrajets(trajets) {
+  trajetsLayer.clearLayers();
+  tripRegistry.clear();
 
-        L.circleMarker([coords.lat, coords.lng], {
-          radius: 5,
-          color: '#2980b9',
-          fillColor: '#3498db',
-          fillOpacity: 0.9,
-          weight: 1.5
-        })
-          .bindPopup(`<strong>${arret.nom_arret}</strong><br>${arret.localisation || 'Localisation inconnue'}`)
-          .addTo(arretsLayer);
-      });
+  trajets.forEach(async (trajet, index) => {
+    const routePoints = getRoutePoints(trajet);
+    const depart = getCoordsForStop(trajet.arret_depart_nom);
+    const arrivee = getCoordsForStop(trajet.arret_arrivee_nom);
+    if (!depart || !arrivee) return;
+
+    const color = ROUTE_COLORS[index % ROUTE_COLORS.length];
+    const popup = tripPopupContent(trajet);
+    
+    // Ligne pointillée par défaut (si le routage échoue)
+    const fallbackLine = L.polyline(
+      [[depart.lat, depart.lng], [arrivee.lat, arrivee.lng]],
+      { color, weight: 4, opacity: 0.35, dashArray: '8,6' }
+    ).addTo(trajetsLayer);
+
+    let routeCoords = [[depart.lat, depart.lng], [arrivee.lat, arrivee.lng]];
+
+    if (routePoints) {
+      try {
+        const route = await routeAlongRoads(routePoints);
+        const routeLine = buildRouteLine(route, color).addTo(trajetsLayer);
+        routeLine.bindPopup(popup);
+        trajetsLayer.removeLayer(fallbackLine);
+        
+        // On récupère les vraies coordonnées de la route OSRM
+        routeCoords = route.coordinates.map(c => [c.lat, c.lng]);
+      } catch (error) {
+        console.warn('Routage impossible', error);
+      }
     }
 
+    // --- LOGIQUE D'ANIMATION POUR PLACER LA VOITURE ---
+    // Au lieu de midpoint(), on prend un point basé sur le temps actuel
+    // pour simuler un déplacement réel le long de la ligne
+    const now = Date.now();
+    const speedFactor = 0.00005; // Ajuste la vitesse ici
+    const progress = (now * speedFactor) % 1; 
+    const indexInRoute = Math.floor(progress * (routeCoords.length - 1));
+    const currentPos = routeCoords[indexInRoute];
+
+    const iconName = getVehicleIconName(trajet.vehicule_type || trajet.vehicule_marque);
+    const busMarker = L.marker(currentPos, {
+      icon: busDivIcon(color, iconName)
+    })
+    .bindPopup(popup)
+    .addTo(trajetsLayer);
+
+    // Enregistrer pour le clic dans le panneau latéral
+    tripRegistry.set(String(trajet.id_trajet), { 
+      center: {lat: currentPos[0], lng: currentPos[1]}, 
+      popupTarget: busMarker, 
+      color, 
+      trajet 
+    });
+  });
+}
     function getRoutePoints(trajet) {
       const stops = trajet.ligne_stops || [];
       const departName = normalizeStopName(trajet.arret_depart_nom);
@@ -331,6 +373,13 @@
 
     refreshMapData();
     setInterval(refreshMapData, 30000);
+
+    setInterval(() => {
+    const currentTrajets = Array.from(tripRegistry.values()).map(r => r.trajet);
+    if (currentTrajets.length > 0) {
+        renderTrajets(currentTrajets);
+    }
+}, 2000); // Met à jour la position toutes les 2 sec
   </script>
 </body>
 </html>
