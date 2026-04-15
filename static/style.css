@@ -1504,3 +1504,55 @@ html.theme-dark .bot .msg-bubble {
     background: rgba(14, 165, 233, 0.06);
   }
 }
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 0px; /* On annule la marge pour les petits écrans */
+  }
+
+  .sidebar {
+    transform: translateX(-100%); /* On cache la sidebar à gauche */
+    width: 280px;
+    transition: transform 0.3s ease;
+  }
+
+  /* État quand le menu est ouvert sur mobile */
+  body.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-toggle {
+    display: flex; /* On affiche le bouton "hamburger" */
+  }
+
+  .main {
+    margin-left: 0; /* Le contenu prend toute la largeur */
+  }
+
+  .app-navbar {
+    padding-left: 70px; /* On décale pour ne pas chevaucher le bouton menu */
+  }
+}
+
+@media (max-width: 768px) {
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 colonnes au lieu de 4 */
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr !important; /* Les tableaux l'un sous l'autre */
+  }
+
+  .hero-inner h2 {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: 1fr !important; /* 1 seule colonne sur petit téléphone */
+  }
+  
+  .navbar-right .badge-live, .navbar-right .live-clock {
+    font-size: 0.7rem; /* On réduit la taille des infos en haut */
+  }
+}
