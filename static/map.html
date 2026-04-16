@@ -133,6 +133,41 @@
       return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
     }
 
+    function pointAlongPath(coords, ratio = 0.5) {
+      if (!Array.isArray(coords) || coords.length === 0) return null;
+      if (coords.length === 1) return coords[0];
+
+      const lengths = [];
+      let total = 0;
+      for (let i = 1; i < coords.length; i += 1) {
+        const a = L.latLng(coords[i - 1].lat, coords[i - 1].lng);
+        const b = L.latLng(coords[i].lat, coords[i].lng);
+        const segment = a.distanceTo(b);
+        lengths.push(segment);
+        total += segment;
+      }
+
+      if (total === 0) return coords[Math.floor(coords.length / 2)];
+      const target = Math.max(0, Math.min(1, ratio)) * total;
+
+      let walked = 0;
+      for (let i = 0; i < lengths.length; i += 1) {
+        const segment = lengths[i];
+        if (walked + segment >= target) {
+          const localRatio = (target - walked) / segment;
+          const start = coords[i];
+          const end = coords[i + 1];
+          return {
+            lat: start.lat + (end.lat - start.lat) * localRatio,
+            lng: start.lng + (end.lng - start.lng) * localRatio
+          };
+        }
+        walked += segment;
+      }
+
+      return coords[coords.length - 1];
+    }
+
     function tripPopupContent(trajet) {
       return `
         <strong>${trajet.chauffeur_prenom || ''} ${trajet.chauffeur_nom || ''}</strong><br>
@@ -252,8 +287,7 @@
             routeLine = buildRouteLine(route, color).addTo(trajetsLayer);
             routeLine.bindPopup(popup);
             trajetsLayer.removeLayer(fallbackLine);
-            const routePath = L.polyline(route.coordinates.map((c) => [c.lat, c.lng]));
-            markerCoords = routePath.getCenter();
+            markerCoords = pointAlongPath(route.coordinates, 0.5) || markerCoords;
           } catch (error) {
             console.warn('Routage impossible pour le trajet', trajet.id_trajet, error);
           }
