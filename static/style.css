@@ -45,6 +45,13 @@ html.theme-dark {
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 *,
@@ -97,6 +104,7 @@ body.sidebar-open {
   justify-content: center;
   font-size: 1.15rem;
   transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  order: 0;
 }
 
 .sidebar-toggle:hover {
@@ -241,32 +249,33 @@ body.sidebar-open .layout-overlay {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  width: 100%;
-  max-width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+  max-width: calc(100vw - var(--sidebar-width));
 }
 
 .app-navbar {
-  position: sticky;
-  top: 0;
-  z-index: 90;
+  flex-shrink: 0;
   min-height: var(--navbar-height);
-  padding: 0 1.5rem 0 calc(1.5rem + 0px);
+  padding: 0 1rem;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
   background: var(--surface-elevated);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  overflow: hidden;
+  width: 100%;
 }
 
 .navbar-brand {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  order: 1;
 }
 
 .navbar-logo {
@@ -296,12 +305,14 @@ body.sidebar-open .layout-overlay {
   font-weight: 600;
   color: var(--text);
   min-width: 0;
+  order: 2;
 }
 
 .navbar-right {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  order: 3;
 }
 
 .live-clock {
@@ -375,8 +386,13 @@ html.theme-dark .live-clock {
 }
 
 .content {
-  padding: 1.5rem 1.75rem 2.5rem;
+  padding: 1.25rem;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ——— Hero ——— */
@@ -384,11 +400,14 @@ html.theme-dark .live-clock {
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
-  min-height: 200px;
-  margin-bottom: 1.75rem;
+  height: 180px;
+  flex-shrink: 0;
+  margin-bottom: 1.25rem;
   display: flex;
   align-items: flex-end;
   box-shadow: var(--shadow-lg);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hero-banner::before {
@@ -445,34 +464,18 @@ html.theme-dark .live-clock {
 /* ——— Dashboard grid ——— */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-@media (max-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
 }
 
 /* ——— KPI ——— */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 1.75rem;
-}
-
-@media (max-width: 1200px) {
-  .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .kpi-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
 }
 
 .kpi-card {
@@ -829,21 +832,10 @@ input[type='text']:focus {
 
 .skeleton-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 1.75rem;
-}
-
-@media (max-width: 1200px) {
-  .skeleton-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .skeleton-kpi-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
 }
 
 .skeleton-kpi-card {
@@ -1447,43 +1439,70 @@ html.theme-dark .bot .msg-bubble {
   }
 }
 
-/* ——— Responsive ——— */
+/* ——— Tablet (max 1100px) ——— */
+@media (max-width: 1100px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+/* ——— Small tablet / large mobile (max 900px) ——— */
 @media (max-width: 900px) {
+  :root {
+    --sidebar-width: 0px;
+  }
   .sidebar-toggle {
     display: flex;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow);
   }
-
   .sidebar {
+    width: min(78vw, 260px);
     transform: translateX(-100%);
   }
-
   body.sidebar-open .sidebar {
     transform: translateX(0);
+  }
+  body.sidebar-open .sidebar-toggle {
+    left: calc(min(78vw, 260px) + 12px);
   }
 
   .main {
     margin-left: 0;
-    padding-top: 56px;
+    max-width: 100vw;
+    padding-top: 0;
   }
-
   .app-navbar {
-    padding-left: 4.25rem;
+    min-height: 58px;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-inline-start: calc(40px + 0.75rem + 12px);
   }
-
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
   .page-heading {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
   }
-
   .map-page .content.map-content {
     height: auto;
-    min-height: calc(100vh - var(--navbar-height) - 56px);
+    min-height: calc(100vh - var(--navbar-height));
     flex-direction: column;
   }
-
   .map-container {
     min-height: 55vh;
   }
-
   .map-side-panel {
     width: 100%;
     min-width: 100%;
@@ -1492,13 +1511,54 @@ html.theme-dark .bot .msg-bubble {
   }
 }
 
-@media (max-width: 480px) {
-  .content {
-    padding: 1rem;
+/* ——— Mobile (max 600px) ——— */
+@media (max-width: 600px) {
+  .sidebar-toggle {
+    top: 10px;
+    left: 10px;
+    width: 38px;
+    height: 38px;
   }
-
+  body.sidebar-open .sidebar-toggle {
+    left: calc(min(78vw, 260px) + 10px);
+  }
+  .app-navbar {
+    padding-inline-start: calc(38px + 0.65rem + 10px);
+  }
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  .content {
+    padding: 0.85rem;
+  }
+  .hero-banner {
+    height: 140px;
+  }
+  .hero-inner h2 {
+    font-size: 1.1rem;
+  }
+  .hero-tags {
+    display: none;
+  }
   .navbar-brand .brand-text {
     display: none;
+  }
+  .live-clock {
+    display: none;
+  }
+  .card {
+    padding: 1rem;
+  }
+}
+
+/* ——— Very small mobile (max 380px) ——— */
+@media (max-width: 380px) {
+  .kpi-grid, .skeleton-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .kpi-value {
+    font-size: 1.5rem;
   }
 }
 
