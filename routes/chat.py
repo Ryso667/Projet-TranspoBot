@@ -108,7 +108,7 @@ def natural_language_answer(client: OpenAI, question: str, results: list) -> str
     user_msg = f"Question de l’utilisateur :\n{question}\n\nDonnées renvoyées par la base (JSON) :\n{data_block}"
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": ANSWER_FROM_DATA_PROMPT},
                 {"role": "user", "content": user_msg},
